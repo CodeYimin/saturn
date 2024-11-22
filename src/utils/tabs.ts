@@ -180,21 +180,19 @@ export function useTabs(): TabsResult {
     for (const tab of state.tabs) {
       const title = tab.title || 'Untitled'
       let data: string | null
-      // if (tab.path) {
-      //   try {
-      //     data = await accessReadText(tab.path)
-      //   } catch (e) {
-      //     console.error(
-      //       `Could not resume tab ${tab.path ?? 'Untitled'} (${tab.uuid}) with error`,
-      //     )
-      //     console.error(e)
+      if (tab.path) {
+        try {
+          data = await accessReadText(tab.path)
+        } catch (e) {
+          console.error(`Could not resume tab ${tab.path ?? 'Untitled'} (${tab.uuid}) with error`)
+          console.error(e)
 
-      //     // Discard tab.
-      //     continue
-      //   }
-      // } else {
-      data = localStorage.getItem(backupKey(tab.uuid))
-      // }
+          // Discard tab.
+          continue
+        }
+      } else {
+        data = localStorage.getItem(backupKey(tab.uuid))
+      }
 
       if (!data) {
         continue

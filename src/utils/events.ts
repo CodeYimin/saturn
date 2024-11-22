@@ -16,7 +16,6 @@ import { consoleData, ConsoleType, pushConsole } from '../state/console-data'
 import { backend } from '../state/backend'
 import { BinaryResult } from './mips/mips'
 import {
-  backup,
   closeTab,
   createTab,
   editor,
@@ -318,6 +317,10 @@ export async function setupEvents() {
   await appWindow.onCloseRequested(async (event) => {
     const ids = tabsState.tabs.map((x) => x.uuid)
 
-    backup()
+    for (const id of ids) {
+      if (!closeTab(id)) {
+        event.preventDefault()
+      }
+    }
   })
 }
