@@ -43,15 +43,16 @@ import { find, jump, tab } from '../state/state'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 let currentIndex = ref<number>(-1);
+let prevSearch: string = "";
 
 // Flatten the matches into an array of {line, index} objects
 const matches = computed(() => {
   return find.state.matches.flatMap((matches, line) => matches.map((match) => ({line: line, originalMatch: match})))
 })
 
-function jumpToNext() {
-  if (!matches.value.length) {
-    return
+function jumpToNext(onMatchUpdate: boolean = false) {
+  if (!matches.value.length || (onMatchUpdate && find.state.text === prevSearch)) {
+    return;
   }
 
   if (currentIndex.value === matches.value.length - 1) {
@@ -63,8 +64,8 @@ function jumpToNext() {
   const nextMatch = matches.value[currentIndex.value]
 
   find.state.lastMatch = nextMatch.originalMatch
-  // console.log("Jump", nextMatch.line, nextMatch.originalMatch.index)
   jump({line: nextMatch.line, index: nextMatch.originalMatch.index});
+  prevSearch = find.state.text;
 }
 
 function jumpToPrev() {
@@ -145,12 +146,11 @@ watch(
 )
 
 watch(
-  () => matches.value,
+  () => find.state.matches,
   (value) => {
+    // TODO: find closest match to current cursor position forwards
     currentIndex.value = -1
-    if (value.length > 0) {
-      jumpToNext()
-    }
+    jumpToNext(true)
   }
 )
 </script>
