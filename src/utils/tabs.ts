@@ -132,7 +132,34 @@ export function useTabs(): TabsResult {
     }
   }
 
+  function deleteUnusedBackups() {
+    const numKeys = localStorage.length
+    const keys = new Set<string>()
+    for (let i = 0; i < numKeys; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith(backupKeyPrefix)) {
+        keys.add(key)
+      }
+    }
+    const item = localStorage.getItem(restoreKey)
+
+    if (!item) {
+      pushEmpty()
+      return
+    }
+
+    const state = JSON.parse(item) as TabsRestoreState
+
+    const usedBackups = state.tabs.map((tab) => backupKey(tab.uuid))
+    keys.forEach((key) => {
+      if (!usedBackups.includes(key)) {
+        localStorage.removeItem(key)
+      }
+    })
+  }
+
   async function restore() {
+    deleteUnusedBackups()
     const item = localStorage.getItem(restoreKey)
 
     if (!item) {
