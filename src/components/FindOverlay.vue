@@ -8,6 +8,7 @@
       }"
     >
       <div
+        v-if="!tab()?.hidden.includes(matches.line)"
         v-for="match in matches.matches"
         class="bg-yellow-500 h-6 bg-opacity-30 absolute"
         :class="{ 'bg-opacity-50 bg-orange-500': match === find.state.lastMatch }"
@@ -22,8 +23,9 @@
 
 <script setup lang="ts">
 import { FindMatch } from '../utils/find'
-import { find } from '../state/state'
+import { find, storage, tab } from '../state/state'
 import { computed } from 'vue'
+import { EditorTab } from '../utils/tabs';
 
 const props = withDefaults(
   defineProps<{
@@ -35,7 +37,7 @@ const props = withDefaults(
 )
 
 const findIndices = computed(() => {
-  const pairs = [] as { height: number; matches: FindMatch[] }[]
+  const pairs = [] as { height: number; matches: FindMatch[], line: number }[]
 
   for (let a = 0; a < props.count; a++) {
     const line = a + props.start
@@ -49,8 +51,14 @@ const findIndices = computed(() => {
       continue
     }
 
+    const numHiddenLines = tab()?.hidden.reduce(
+      (prev, curr) => (curr < line ? prev + 1 : prev),
+      0,
+    ) || 0;
+
     pairs.push({
-      height: props.lineHeight * line,
+      height: props.lineHeight * (line - numHiddenLines),
+      line,
       matches,
     })
   }

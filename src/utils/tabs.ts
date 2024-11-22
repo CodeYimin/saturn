@@ -59,6 +59,8 @@ export interface EditorTab {
   writable: boolean
   marked: boolean // needs saving
   profile: ExecutionProfile | null
+  hiddenRanges: { start: number; end: number; enabled: boolean }[]
+  get hidden(): number[]
 }
 
 export function collectLines(lines: string[]): string {
@@ -108,6 +110,8 @@ interface RestoreTab {
   writable: boolean
   marked: boolean
   profile: ExecutionProfile | null
+  hiddenRanges: { start: number; end: number; enabled: boolean }[]
+  get hidden(): number[]
 }
 
 interface TabsRestoreState {
@@ -179,6 +183,22 @@ export function useTabs(): TabsResult {
         writable: tab.writable,
         marked: tab.marked,
         profile: tab.profile,
+        hiddenRanges: tab.hiddenRanges || [],
+        get hidden() {
+          return (
+            this.hiddenRanges as {
+              start: number
+              end: number
+              enabled: boolean
+            }[]
+          )
+            .flatMap(({ start, end, enabled }) =>
+              enabled
+                ? Array.from({ length: end - start + 1 }, (_, i) => start + i)
+                : [],
+            )
+            .filter((x, i, arr) => arr.indexOf(x) === i)
+        },
         lines,
       })
     }
@@ -237,6 +257,7 @@ export function useTabs(): TabsResult {
         writable: tab.writable,
         marked: tab.marked,
         profile: tab.profile,
+        hiddenRanges: tab.hiddenRanges,
       } as RestoreTab
 
       if (!tab.path) {
@@ -346,6 +367,22 @@ export function useTabs(): TabsResult {
       writable,
       marked: false,
       profile,
+      hiddenRanges: [] as { start: number; end: number; enabled: boolean }[],
+      get hidden() {
+        return (
+          this.hiddenRanges as {
+            start: number
+            end: number
+            enabled: boolean
+          }[]
+        )
+          .flatMap(({ start, end, enabled }) =>
+            enabled
+              ? Array.from({ length: end - start + 1 }, (_, i) => start + i)
+              : [],
+          )
+          .filter((x, i, arr) => arr.indexOf(x) === i)
+      },
     })
 
     editor.selected = id

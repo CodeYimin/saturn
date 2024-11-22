@@ -1,4 +1,5 @@
 import { computed, ComputedRef, reactive } from 'vue'
+import { tab } from '../state/state'
 
 export interface Virtualization {
   renderStart: ComputedRef<number>
@@ -34,9 +35,18 @@ export function useVirtualize(
 
   const renderStart = computed(() => inBounds(state.startIndex))
   const renderCount = computed(
-    () => inBounds(state.endIndex) - renderStart.value
+    () => inBounds(state.endIndex) - renderStart.value,
   )
-  const topPadding = computed(() => renderStart.value * lineHeight)
+  const numHiddenLines = computed(
+    () =>
+      tab()?.hidden.reduce(
+        (prev, curr) => (curr < renderStart.value ? prev + 1 : prev),
+        0,
+      ) || 0,
+  )
+  const topPadding = computed(
+    () => (renderStart.value - numHiddenLines.value) * lineHeight,
+  )
   const remainingLines = computed(
     () => count() - renderCount.value - renderStart.value
   )

@@ -1,3 +1,4 @@
+import { tab } from '../state/state'
 import {
   consumeBackwards,
   consumeForwards,
@@ -168,6 +169,15 @@ export class Editor {
   public mutate(line: number, count: number, insert: number, body: () => void) {
     if (this.writable && !this.writable(line, count, insert)) {
       return
+    }
+
+    const linesEdited = Array.from({ length: count }, (_, i) => line + i)
+
+    if (tab() && (line !== 0 || (this.cursor as any).highlight)) {
+      tab()!.hiddenRanges = tab()!.hiddenRanges.filter(
+        ({ start, end, enabled }) =>
+          linesEdited.every((line) => start > line || line > end),
+      )
     }
 
     this.dirty(line, count, insert)

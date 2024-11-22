@@ -1,8 +1,9 @@
 <template>
   <div
+    v-if="!tab()?.hidden.includes(props.highlight.line)"
     class="absolute h-6 border-b-2 border-dotted cursor-pointer"
     :style="{
-      top: `${props.lineHeight * props.highlight.line}px`,
+      top: `${props.lineHeight * (props.highlight.line - numHiddenLines)}px`,
       left: `${props.highlight.offset}px`,
       width: `${props.highlight.size}px`,
     }"
@@ -30,12 +31,19 @@
 
 <script setup lang="ts">
 import { Highlights } from '../utils/highlights'
-import { UnwrapRef } from 'vue'
+import { computed, UnwrapRef } from 'vue'
 import { GotoMessage } from '../utils/goto'
 import {
   suggestionLetter,
   suggestionStyle,
 } from '../utils/query/suggestion-styles'
+import { storage, tab } from '../state/state';
+import { EditorTab } from '../utils/tabs';
+
+const numHiddenLines = computed(() => tab()?.hidden.reduce(
+  (prev, curr) => (curr < props.highlight.line ? prev + 1 : prev),
+  0,
+) || 0)
 
 const props = withDefaults(
   defineProps<{

@@ -1,8 +1,9 @@
 <template>
   <div
+    v-if="!tab()!.hidden.includes(props.highlight.line)"
     class="absolute h-6 border-b-2 border-red-500 bg-red-500 bg-opacity-25 group"
     :style="{
-      top: `${props.lineHeight * props.highlight.line}px`,
+      top: `${props.lineHeight * (props.highlight.line - numHiddenLines)}px`,
       left: `${props.highlight.offset}px`,
       width: `${props.highlight.size}px`,
     }"
@@ -17,7 +18,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { storage, tab } from '../state/state';
 import { Highlights } from '../utils/highlights'
+import { EditorTab } from '../utils/tabs';
+
+const numHiddenLines = computed(() => tab()?.hidden.reduce(
+  (prev, curr) => (curr < props.highlight.line ? prev + 1 : prev),
+  0,
+) || 0)
 
 const props = withDefaults(
   defineProps<{

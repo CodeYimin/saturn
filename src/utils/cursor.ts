@@ -2,6 +2,7 @@ import { Editor, LineRange, SelectionIndex } from './editor'
 import { computed, ComputedRef } from 'vue'
 import { MergeSuggestion, SuggestionsInterface } from './suggestions'
 import { SizeCalculator } from './query/text-size'
+import { tab } from '../state/state'
 import {
   consumeBackwards,
   consumeDirection,
@@ -68,9 +69,15 @@ export function useCursor(
     const leading = text.substring(0, index.index)
     const { width } = calculator.calculate(leading)
 
+    const numHiddenLines =
+      tab()?.hidden.reduce(
+        (prev, curr) => (curr < index.line ? prev + 1 : prev),
+        0,
+      ) || 0
+
     return {
       offsetX: width,
-      offsetY: lineHeight * index.line,
+      offsetY: lineHeight * (index.line - numHiddenLines),
     }
   }
 
@@ -85,6 +92,12 @@ export function useCursor(
       return null
     }
 
+    const numHiddenLines =
+      tab()?.hidden.reduce(
+        (prev, curr) => (curr < range.startLine ? prev + 1 : prev),
+        0,
+      ) || 0
+
     function inBounds(line: number): boolean {
       return start <= line && line < start + count
     }
@@ -92,7 +105,7 @@ export function useCursor(
     let top = null as number | null
     const suggestTop = (line: number) => {
       if (top === null) {
-        top = line * lineHeight
+        top = (line - numHiddenLines) * lineHeight
       }
     }
 
@@ -110,7 +123,7 @@ export function useCursor(
         },
       ]
 
-      return { ranges, top: range.startLine * lineHeight }
+      return { ranges, top: (range.startLine - numHiddenLines) * lineHeight }
     }
 
     const result = [] as RangeLine[]
@@ -134,6 +147,10 @@ export function useCursor(
     }
 
     for (let a = intersectionStart; a < intersectionEnd; a++) {
+      if (tab()?.hidden.includes(a)) {
+        continue
+      }
+
       result.push({
         leading: '',
         body: editor().lineAt(a),
@@ -150,7 +167,10 @@ export function useCursor(
       })
     }
 
-    return { top: top ?? range.startLine * lineHeight, ranges: result }
+    return {
+      top: top ?? (range.startLine - numHiddenLines) * lineHeight,
+      ranges: result,
+    }
   }
 
   let pressedBackspace = false
@@ -230,6 +250,7 @@ export function useCursor(
     let underflow = false
     let overflow = false
 
+    // Bug if last line is hidden line
     let actualLine = index.line
     const count = editor().lineCount()
 
@@ -251,6 +272,16 @@ export function useCursor(
       actualIndex = text.length
     } else {
       actualIndex = Math.max(index.index, 0)
+    }
+
+    if (tab() && !tab()!.cursor.highlight) {
+      tab()!.hiddenRanges = tab()!.hiddenRanges.map(
+        ({ start, end, enabled }) => ({
+          start,
+          end,
+          enabled: start > actualLine || actualLine > end,
+        }),
+      )
     }
 
     return {
@@ -381,7 +412,10 @@ export function useCursor(
     const text = editor().lineAt(current.line)
     const space = grabWhitespace(text)
 
-    putCursor({ line: current.line, index: text.length - space.trailing.length })
+    putCursor({
+      line: current.line,
+      index: text.length - space.trailing.length,
+    })
     promptSuggestions()
   }
 
@@ -776,7 +810,16 @@ export function useCursor(
     }
 
     const lineIndex = Math.floor(y / lineHeight)
-    const line = Math.min(Math.max(lineIndex, 0), count - 1)
+    let line = 0
+    let nonHiddenLines = 0
+    while (nonHiddenLines < lineIndex + 1) {
+      if (!tab()?.hidden.includes(line)) {
+        nonHiddenLines++
+      }
+      line++
+    }
+    line -= 1
+    line = Math.max(0, Math.min(line, count - 1))
     const text = editor().lineAt(line)
 
     const index = calculator.position(text, x)

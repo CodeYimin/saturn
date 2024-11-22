@@ -6,7 +6,7 @@
     @resize="updateBounds"
   >
     <div
-      class="w-20 pr-4 mr-2 text-xs text-slate-400 font-medium shrink-0 z-10 absolute left-0 pt-2"
+      class="w-20 pr-4 mr-2 text-xs text-slate-400 font-medium shrink-0 z-10 absolute left-0 pt-2 group"
       @click.self
       @wheel.stop
       :style="{ top: `${state.lineOffset}px` }"
@@ -16,18 +16,35 @@
       <div
         v-for="i in renderCount"
         :key="getIndex(i)"
-        @click="toggleBreakpoint(getIndex(i))"
-        class="w-full h-6 text-right flex items-center justify-end cursor-pointer pointer-events-auto group"
+        class=""
       >
-        <div
-          class="rounded-full bg-red-700 w-3 h-3 mr-auto ml-3"
-          :class="{
-            'opacity-100 group-hover:opacity-100': hasBreakpoint(getIndex(i)),
-            'opacity-0 group-hover:opacity-30': !hasBreakpoint(getIndex(i))
-          }"
-        />
-
-        {{ getIndex(i) + 1 }}
+        <div 
+          v-if="!tab()?.hidden.includes(getIndex(i))"
+          class="w-full h-6 text-right flex items-center justify-end cursor-pointer pointer-events-auto"
+        >
+          <div
+            @click="toggleBreakpoint(getIndex(i))"
+            class="rounded-full bg-red-700 w-3 h-3 mr-auto ml-3"
+            :class="{
+              'opacity-100 hover:opacity-100': hasBreakpoint(getIndex(i)),
+              'opacity-0 hover:opacity-30': !hasBreakpoint(getIndex(i))
+            }"
+          />
+            {{ getIndex(i) + 1 }}
+          <div
+            class="w-3 h-3 ml-auto"
+          >
+            <ChevronDownIcon
+              @click="handleCollapse(getIndex(i))"
+              v-if="getNumIndentedAhead(getIndex(i)) > 0"
+              class="text-gray-100 rounded-full w-full h-full transition-opacity"
+              :class="{
+                'opacity-0 group-hover:opacity-50': !tab()?.hiddenRanges.some(range => range.start === getIndex(i + 1)),
+                '-rotate-90 opacity-100 group-hover:opacity-100': tab()?.hiddenRanges.some(range => range.start === getIndex(i + 1)),
+              }"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -57,10 +74,12 @@
       <div
         v-for="i in renderCount"
         :key="getIndex(i)"
-        class="h-6 flex items-center pr-16"
-        :class="lineStyling(i)"
       >
-        <div>
+        <div 
+          v-if="!tab()?.hidden.includes(getIndex(i))"
+          class="h-6 flex items-center pr-16"
+          :class="lineStyling(i)"
+        >
           <span
             v-for="(token, index) in storage.highlights[getIndex(i)]"
             :key="index"
@@ -68,6 +87,11 @@
           >
             {{ token.text }}
           </span>
+          <EllipsisHorizontalIcon
+            v-if="tab()?.hiddenRanges.some(range => range.start === getIndex(i + 1))"
+            @click="handleCollapse(getIndex(i))"
+            class="ml-1 w-3 h-3 text-gray-100 opacity-50 cursor-pointer"
+          />
         </div>
       </div>
 
@@ -93,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { ChevronDownIcon, EllipsisHorizontalIcon } from '@heroicons/vue/24/solid'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 
 import { consoleData } from '../state/console-data'
@@ -126,8 +151,9 @@ import Suggestions from './Suggestions.vue'
 import SelectionOverlay from './SelectionOverlay.vue'
 import { hasActionKey } from '../utils/query/shortcut-key'
 import SymbolHighlightOverlay from './SymbolHighlightOverlay.vue'
+import { EditorTab } from '../utils/tabs'
 
-const lineHeight = 24 // h-6 -> 1.5rem -> 24px
+const lineHeight = 24; // h-6 -> 1.5rem -> 24px
 
 const state = reactive({
   lineOffset: 0,
@@ -148,14 +174,46 @@ const computedRanges = computed(() => {
   return range(renderStart.value, renderCount.value)
 })
 
+function getNumIndentedAhead(line: number) {
+  const body = tabBody.value;
+  const currentText = body[line];
+  const currentIndent = currentText.search(/(?:\S|$)/);
+  
+  let parsingLine = line + 1;
+  while (parsingLine < body.length) {
+    const parsingText = body[parsingLine];
+    const parsingIndent = parsingText.search(/\S/);
+
+    if (parsingIndent <= currentIndent) {
+      return parsingLine - line - 1;
+    }
+
+    parsingLine++;
+  }
+
+  return parsingLine - line - 1;
+}
+
+function handleCollapse(line: number) {
+  const hiddenRangeIndex = tab()!.hiddenRanges.findIndex(range => range.start === line + 1)
+
+  if (hiddenRangeIndex === -1) {
+    tab()!.hiddenRanges = [...tab()!.hiddenRanges, {start: line + 1, end: line + getNumIndentedAhead(line), enabled: true}]
+  } else {
+    tab()!.hiddenRanges = [...tab()!.hiddenRanges.slice(0, hiddenRangeIndex), ...tab()!.hiddenRanges.slice(hiddenRangeIndex + 1)]
+  }
+}
+
 function lineStyling(i: number): Record<string, boolean> {
   const index = getIndex(i)
   const breakpoint = hasBreakpoint(index)
   const isStopped = index === stoppedIndex.value
+  const isCollapsed = tab()?.hidden.some((hidden) => hidden === index + 1) || false;
 
   return {
     'dark:bg-breakpoint-neutral bg-breakpoint-neutral-light': breakpoint && !isStopped,
     'dark:bg-breakpoint-stopped bg-breakpoint-stopped-light': isStopped,
+    'bg-blue-200 bg-opacity-10': isCollapsed,
     'bg-yellow-500 bg-opacity-5':
       !breakpoint && !isStopped && !(tab()?.writable ?? true),
   }
