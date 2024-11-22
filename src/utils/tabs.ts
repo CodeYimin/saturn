@@ -287,13 +287,13 @@ export function useTabs(): TabsResult {
         hiddenRanges: tab.hiddenRanges,
       } as RestoreTab
 
-      if (!tab.path) {
-        const collect = collectLines(tab.lines)
+      // if (!tab.path) {
+      const collect = collectLines(tab.lines)
 
-        if (collect.length <= maxBackupLength) {
-          map.set(tab.uuid, collect)
-        }
+      if (collect.length <= maxBackupLength) {
+        map.set(tab.uuid, collect)
       }
+      // }
 
       state.tabs.push(restore)
     }
