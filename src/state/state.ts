@@ -56,6 +56,35 @@ export const {
 } = useSymbolHighlight(storageResult, widthQuery)
 
 function onDirty(line: number, deleted: number, insert: string[]) {
+  const linesAdded = insert.length - deleted
+
+  if (tab() && (line !== 0 || tab()!.cursor.highlight)) {
+    if (linesAdded < 0) {
+      // Watch for deleting an entire hidden range
+      const linesEdited = Array.from({ length: deleted }, (_, i) => line + i)
+      tab()!.hiddenRanges = tab()!.hiddenRanges.filter(
+        ({ start, end, enabled }) =>
+          linesEdited.every((line) => start > line || line > end),
+      )
+    } else {
+      // Otherwise modifying a line
+      tab()!.hiddenRanges = tab()!.hiddenRanges.filter(
+        ({ start, end, enabled }) => start > line || line > end,
+      )
+    }
+  }
+
+  // Correct for hidden ranges when adding/deleting a line
+  if (tab()) {
+    tab()!.hiddenRanges = tab()!.hiddenRanges.map(
+      ({ start, end, enabled }) => ({
+        start: start > line ? start + linesAdded : start,
+        end: start > line ? end + linesAdded : end,
+        enabled,
+      }),
+    )
+  }
+
   find.dirty(line, deleted, insert)
   gotoHighlights.shiftHighlight(line, deleted, insert.length)
   updateCursorSymbol(cursorState())
