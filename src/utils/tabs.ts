@@ -87,6 +87,7 @@ export type TabsResult = TabsInterface & {
   tabBody: ComputedRef<string[]>
   saveModal: SaveModalResult,
   showSettings: Ref<boolean>
+  backup: () => void
 }
 
 const restoreKey = 'saturn:tabs-state'
@@ -369,6 +370,7 @@ export function useTabs(): TabsResult {
 
   return {
     tabsState: editor,
+    backup,
     tabBody,
     tab: () => tab.value,
     closeTab,
