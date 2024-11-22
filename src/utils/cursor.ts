@@ -373,25 +373,45 @@ export function useCursor(
   }
 
   function moveDown(shift: boolean = false) {
-    if (suggestions && suggestions.hasSuggestions()) {
-      return suggestions.moveIndex(+1)
+    const current = cursor()
+    let numHiddenLinesDown = 0
+    let line = current.line
+    while (tab()?.hidden.includes(line + 1)) {
+      numHiddenLinesDown++
+      line++
     }
 
-    const current = cursor()
+    if (suggestions && suggestions.hasSuggestions()) {
+      return suggestions.moveIndex(numHiddenLinesDown + 1)
+    }
 
     setSelection(shift)
 
-    putCursor({ line: current.line + 1, index: current.index })
+    putCursor({
+      line: current.line + numHiddenLinesDown + 1,
+      index: current.index,
+    })
   }
 
   function moveUp(shift: boolean = false) {
+    const current = cursor()
+    let numHiddenLinesUp = 0
+    let line = current.line
+    while (tab()?.hidden.includes(line - 1)) {
+      numHiddenLinesUp++
+      line--
+    }
+
     if (suggestions && suggestions.hasSuggestions()) {
-      return suggestions.moveIndex(-1)
+      return suggestions.moveIndex(-numHiddenLinesUp - 1)
     }
 
     setSelection(shift)
 
-    putCursor({ line: cursor().line - 1, index: cursor().index })
+    putCursor({
+      line: current.line - numHiddenLinesUp - 1,
+      index: cursor().index,
+    })
   }
 
   function moveStart(shift: boolean = false) {
