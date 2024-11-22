@@ -573,8 +573,8 @@ export function useCursor(
 
     const value = cursor()
 
-    switch (event.key.toLowerCase()) {
-      case 'a':
+    switch (event.code) {
+      case 'KeyA':
         const count = editor().lineCount()
 
         if (count > 0) {
@@ -587,11 +587,11 @@ export function useCursor(
 
         break
 
-      case '/':
+      case 'Slash':
         comment()
         break
 
-      case 'y': {
+      case 'KeyY': {
         const position = editor().redo()
 
         suggestions?.dismissSuggestions()
@@ -604,7 +604,7 @@ export function useCursor(
         break
       }
 
-      case 'z': {
+      case 'KeyZ': {
         let position: SelectionIndex | null
 
         if (event.shiftKey) {

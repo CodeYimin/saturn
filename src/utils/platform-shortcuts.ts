@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api'
-import { hasActionKey } from './query/shortcut-key'
 import { emit } from '@tauri-apps/api/event'
+import { hasActionKey } from './query/shortcut-key'
 
 interface Accelerator {
   command: boolean
@@ -11,6 +11,16 @@ interface Accelerator {
 interface Shortcut {
   event: string
   accelerator: Accelerator
+}
+
+function jsToTauriKeyCode(key: string): string {
+  if (key.includes('Key')) {
+    return key.replace('Key', '')
+  } else if (key === 'Comma') {
+    return ','
+  } else {
+    return key
+  }
 }
 
 export async function setupShortcuts() {
@@ -38,12 +48,14 @@ export async function setupShortcuts() {
   })
 
   window.addEventListener('keydown', async (event) => {
-    const shortcut = keys.get(event.key.toUpperCase())?.find((shortcut) => {
-      return (
-        shortcut.accelerator.command == hasActionKey(event) &&
-        shortcut.accelerator.shift == event.shiftKey
-      )
-    })
+    const shortcut = keys
+      .get(jsToTauriKeyCode(event.code))
+      ?.find((shortcut) => {
+        return (
+          shortcut.accelerator.command == hasActionKey(event) &&
+          shortcut.accelerator.shift == event.shiftKey
+        )
+      })
 
     if (!shortcut) {
       return
